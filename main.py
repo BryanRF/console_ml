@@ -19,6 +19,9 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
+
+import os
+import matplotlib.pyplot as plt
 # Configuración de los algoritmos y sus respectivos entrenadores
 algorithms = {
     'SVM': train_svm,
@@ -124,63 +127,78 @@ def generate_report(results, dataset_name):
     for model_name, metrics in results.items():
         report_data.append({
             'Model': model_name,
-            'Accuracy': f"{metrics['accuracy']:.4f}",
-            'Precision': f"{metrics['precision']:.4f}",
-            'Recall': f"{metrics['recall']:.4f}",
-            'F1 Score': f"{metrics['f1_score']:.4f}",
-            'AUC':f"{metrics['auc']:.4f}",
-            'CPU Usage (%)': f"{metrics['cpu_usage']:.2f}%",
-            'Execution Time (s)': f"{metrics['execution_time']:.2f} seconds"
+            'Accuracy': metrics['accuracy'],
+            'Precision': metrics['precision'],
+            'Recall': metrics['recall'],
+            'F1 Score': metrics['f1_score'],
+            'AUC': metrics['auc'],
+            'CPU Usage (%)': metrics['cpu_usage'],
+            'Execution Time (s)': metrics['execution_time']
         })
 
-    # Crear un identificador único y nombre del archivo con el nombre del dataset
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")  # Formato de fecha y hora
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = os.path.join("resultados", dataset_name)
+    excel_dir = os.path.join(output_dir, "excel")
+    images_dir = os.path.join(output_dir, "imagenes")
+    
+    # Crear las carpetas si no existen
+    os.makedirs(excel_dir, exist_ok=True)
+    os.makedirs(images_dir, exist_ok=True)
+
+    # Guardar el reporte en Excel
     filename = f'Resultado_ml_{dataset_name}_{current_time}.xlsx'
+    filepath = os.path.join(excel_dir, filename)
 
-    # Crear carpeta "resultados" si no existe
-    output_dir = "resultados"
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Ruta completa del archivo en la carpeta "resultados"
-    filepath = os.path.join(output_dir, filename)
-
-    # Convertir los resultados a un DataFrame de pandas
     df_report = pd.DataFrame(report_data)
-
-    # Identificar la fila con el mejor resultado basado en la métrica 'Accuracy'
     best_row_index = df_report['Accuracy'].idxmax()
 
-    # Crear un archivo de Excel con openpyxl y configurar los estilos
     wb = Workbook()
     ws = wb.active
     ws.title = "Model Report"
-
-    # Agregar los datos del DataFrame a la hoja de cálculo
+    
     for r_idx, row in enumerate(dataframe_to_rows(df_report, index=False, header=True), 1):
         for c_idx, value in enumerate(row, 1):
             cell = ws.cell(row=r_idx, column=c_idx, value=value)
-            # Aplicar estilo a los encabezados
             if r_idx == 1:
                 cell.font = Font(bold=True, color="FFFFFF")
-                cell.fill = PatternFill("solid", fgColor="4F81BD")  # Color azul para encabezados
+                cell.fill = PatternFill("solid", fgColor="4F81BD")
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="center")
-                
-                # Resaltar la fila con el mejor resultado en la métrica 'Accuracy'
-                if r_idx == best_row_index + 2:  # Ajuste de +2 debido al índice de DataFrame y encabezado
-                    cell.fill = PatternFill("solid", fgColor="90EE90")  # Color verde claro para la mejor fila
+                if r_idx == best_row_index + 2:
+                    cell.fill = PatternFill("solid", fgColor="90EE90")
 
-    # Ajustar ancho de columnas automáticamente
     for col in ws.columns:
         max_length = max(len(str(cell.value)) for cell in col)
         col_letter = col[0].column_letter
         ws.column_dimensions[col_letter].width = max_length + 2
 
-    # Guardar el archivo
     wb.save(filepath)
     print(f"📊 Reporte generado: {filepath}")
+
+    # Abrir el archivo automáticamente
     os.startfile(filepath)
+    
+    # Generar gráficos de barras para cada métrica
+    metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC']
+    for metric in metrics:
+        plt.figure(figsize=(10, 6))
+        plt.bar(df_report['Model'], df_report[metric], color='skyblue')
+        plt.title(f'{metric} por Modelo')
+        plt.xlabel('Modelo')
+        plt.ylabel(metric)
+        plt.ylim(0, 1)  # Suponiendo que las métricas están en el rango de 0 a 1
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        
+        # Guardar el gráfico como archivo de imagen en la carpeta de imágenes
+        chart_path = os.path.join(images_dir, f'{metric}_chart_{dataset_name}_{current_time}.png')
+        plt.savefig(chart_path)
+        print(f"📊 Gráfico {metric} guardado: {chart_path}")
+
+        # Mostrar el gráfico (opcional)
+        
+        
 
 # Función para clasificar una nueva imagen usando el mejor modelo
 def classify_image(image_path, model_path):
@@ -203,7 +221,7 @@ def main(input_path, dataset_name, source='local'):
 
 
 # Entrenamiento
-# main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
+main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
 # main("link drive abierto", 'Dataset_de_Estrias', source='drive')
 
 # Clasificar una nueva imagen
