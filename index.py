@@ -1,5 +1,6 @@
 import os
 import time
+import pickle
 from google_drive_downloader import GoogleDriveDownloader as gdd
 from PIL import Image
 import numpy as np
@@ -17,7 +18,7 @@ import uuid
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill, Alignment
-from openpyxl.worksheet.dimensions import ColumnDimension
+from datetime import datetime
 # Configuración de los algoritmos y sus respectivos entrenadores
 algorithms = {
     'SVM': train_svm,
@@ -80,9 +81,14 @@ def load_data(path, source='local'):
 
     return X_train, X_test, y_train, y_test
 
-# Entrenamiento y evaluación de cada algoritmo con loading específico
-def evaluate_algorithms(X_train, X_test, y_train, y_test):
+# Entrenamiento y evaluación de cada algoritmo con loading específico y guardado de modelos
+def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name):
     results = {}
+    best_model = None
+    best_accuracy = 0.0
+    model_dir = os.path.join("entrenamiento", dataset_name)
+    os.makedirs(model_dir, exist_ok=True)
+
     for name, train_func in algorithms.items():
         # Loading para cada algoritmo con emojis
         global loading_done
@@ -93,13 +99,24 @@ def evaluate_algorithms(X_train, X_test, y_train, y_test):
         
         try:
             # Entrenar y evaluar el modelo
-            results[name] = train_func(X_train, y_train, X_test, y_test)
+            model_result = train_func(X_train, y_train, X_test, y_test)
+            results[name] = model_result
+            
+            # Guardar el modelo entrenado en la carpeta correspondiente
+            model_path = os.path.join(model_dir, f"{name}.pkl")
+            with open(model_path, 'wb') as model_file:
+                pickle.dump(model_result['model'], model_file)
+            
+            # Identificar el mejor modelo basado en la precisión
+            if model_result['accuracy'] > best_accuracy:
+                best_accuracy = model_result['accuracy']
+                best_model = model_path
         finally:
             loading_done = True
             thread.join()  # Esperar que el loading termine
             print(f"✅ {name} completado.")
     
-    return results
+    return results, best_model
 
 # Generación del reporte final en un archivo Excel
 def generate_report(results, dataset_name):
@@ -107,18 +124,18 @@ def generate_report(results, dataset_name):
     for model_name, metrics in results.items():
         report_data.append({
             'Model': model_name,
-            'Accuracy': metrics['accuracy'],
-            'Precision': metrics['precision'],
-            'Recall': metrics['recall'],
-            'F1 Score': metrics['f1_score'],
-            'AUC': metrics['auc'],
-            'CPU Usage (%)': metrics['cpu_usage'],
-            'Execution Time (s)': metrics['execution_time']
+            'Accuracy': f"{metrics['accuracy']:.4f}",
+            'Precision': f"{metrics['precision']:.4f}",
+            'Recall': f"{metrics['recall']:.4f}",
+            'F1 Score': f"{metrics['f1_score']:.4f}",
+            'AUC':f"{metrics['auc']:.4f}",
+            'CPU Usage (%)': f"{metrics['cpu_usage']:.2f}%",
+            'Execution Time (s)': f"{metrics['execution_time']:.2f} seconds"
         })
 
     # Crear un identificador único y nombre del archivo con el nombre del dataset
-    unique_id = uuid.uuid4()
-    filename = f'Resultados_{dataset_name}_{unique_id}.xlsx'
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")  # Formato de fecha y hora
+    filename = f'Resultado_ml_{dataset_name}_{current_time}.xlsx'
 
     # Crear carpeta "resultados" si no existe
     output_dir = "resultados"
@@ -129,6 +146,9 @@ def generate_report(results, dataset_name):
 
     # Convertir los resultados a un DataFrame de pandas
     df_report = pd.DataFrame(report_data)
+
+    # Identificar la fila con el mejor resultado basado en la métrica 'Accuracy'
+    best_row_index = df_report['Accuracy'].idxmax()
 
     # Crear un archivo de Excel con openpyxl y configurar los estilos
     wb = Workbook()
@@ -142,10 +162,14 @@ def generate_report(results, dataset_name):
             # Aplicar estilo a los encabezados
             if r_idx == 1:
                 cell.font = Font(bold=True, color="FFFFFF")
-                cell.fill = PatternFill("solid", fgColor="4F81BD")  # Color azul
+                cell.fill = PatternFill("solid", fgColor="4F81BD")  # Color azul para encabezados
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="center")
+                
+                # Resaltar la fila con el mejor resultado en la métrica 'Accuracy'
+                if r_idx == best_row_index + 2:  # Ajuste de +2 debido al índice de DataFrame y encabezado
+                    cell.fill = PatternFill("solid", fgColor="90EE90")  # Color verde claro para la mejor fila
 
     # Ajustar ancho de columnas automáticamente
     for col in ws.columns:
@@ -156,11 +180,31 @@ def generate_report(results, dataset_name):
     # Guardar el archivo
     wb.save(filepath)
     print(f"📊 Reporte generado: {filepath}")
+    os.startfile(filepath)
+
+# Función para clasificar una nueva imagen usando el mejor modelo
+def classify_image(image_path, model_path):
+    with open(model_path, 'rb') as file:
+        model = pickle.load(file)
+    
+    img = Image.open(image_path).convert('RGB')
+    img = img.resize((224, 224))
+    img_array = np.array(img).flatten().reshape(1, -1)  # Preparar imagen para predicción
+    prediction = model.predict(img_array)
+    return prediction[0]
+
 # Ejecución completa del sistema
 def main(input_path, dataset_name, source='local'):
     X_train, X_test, y_train, y_test = load_data(input_path, source)
-    results = evaluate_algorithms(X_train, X_test, y_train, y_test)
+    results, best_model = evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name)
     generate_report(results, dataset_name)
+    print(f"El mejor modelo entrenado se encuentra en: {best_model}")
 
-# Ejemplo de uso
-main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
+# Entrenamiento
+# main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
+# main("link drive abierto", 'Dataset_de_Estrias', source='drive')
+
+# Clasificar una nueva imagen
+# Ejemplo de uso de clasificación
+image_class = classify_image("C:\\Users\\rfrey\\Documents\\console_ml\\imagen\\e204236c65.JPG", "entrenamiento/Dataset_de_Estrias/SVM.pkl")
+print(f"🧠 La clase de la imagen es: {image_class}")

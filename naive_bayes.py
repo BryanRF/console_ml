@@ -24,6 +24,6 @@ def train_naive_bayes(X_train, y_train, X_test, y_test):
         'recall': recall_score(y_test, y_pred, average='weighted'),
         'f1_score': f1_score(y_test, y_pred, average='weighted', zero_division=1),
         'auc': roc_auc_score(y_test, y_prob, multi_class='ovr', average='weighted'),
-        'cpu_usage': end_cpu - start_cpu,
+        'cpu_usage': max(end_cpu - start_cpu, 1),
         'execution_time': end_time - start_time
     }

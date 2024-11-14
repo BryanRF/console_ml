@@ -7,6 +7,8 @@ __pycache__/
 env/
 venv/
 dataset/
+entrenamiento/
+imagen/
 resultados/
 datasets/
 pip-log.txt
