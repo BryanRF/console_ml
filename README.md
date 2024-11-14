@@ -14,6 +14,9 @@ Asegúrate de tener Python 3.6 o superior y `pip` instalado en tu sistema.
 3. Ejecuta el siguiente comando para instalar todas las dependencias del proyecto:
 
    ```bash
+   pip install virtualenv
+   virtualenv venv 
+   venv\Scripts\activate
    pip install -r requirements.txt
    ```
 
@@ -26,14 +29,11 @@ Asegúrate de tener Python 3.6 o superior y `pip` instalado en tu sistema.
 Para entrenar los modelos y generar un reporte de rendimiento en Excel, ejecuta el archivo principal de la siguiente manera:
 
 ```bash
-python main.py "ruta_del_dataset" "nombre_del_dataset" "source"
+venv\Scripts\activate
+python main.py
 ```
 
-#### Ejemplo
 
-```bash
-python main.py "C:\Users\rfrey\Documents\console_ml\dataset" "Dataset_de_Estrias" "local"
-```
 
 Este comando:
 - Entrena los modelos especificados en el código (`SVM`, `Naive Bayes`, `Decision Tree`, `Logistic Regression`, y `Neural Network`).
