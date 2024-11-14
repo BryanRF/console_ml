@@ -5,7 +5,7 @@ Este proyecto entrena varios modelos de machine learning para la clasificación 
 ## 1. Instalación
 
 ### Requisitos previos
-Asegúrate de tener Python 3.6 o superior y `pip` instalado en tu sistema.
+Asegúrate de tener Python 3.8.10 o superior y `pip` instalado en tu sistema.
 
 ### Instalación de Dependencias
 
@@ -52,7 +52,7 @@ print(f"🧠 La clase de la imagen es: {image_class}")
 #### Ejemplo
 
 ```python
-image_class = classify_image("C:\Users\rfrey\Documents\console_ml\imagen\e204236c65.JPG", "entrenamiento/Dataset_de_Estrias/SVM.pkl")
+image_class = classify_image("C:\Users\user\Documents\console_ml\imagen\e204236c65.JPG", "entrenamiento/Dataset_de_Estrias/SVM.pkl")
 print(f"🧠 La clase de la imagen es: {image_class}")
 ```
 
