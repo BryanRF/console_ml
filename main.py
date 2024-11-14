@@ -196,7 +196,6 @@ def generate_report(results, dataset_name):
         plt.savefig(chart_path)
         print(f"📊 Gráfico {metric} guardado: {chart_path}")
 
-        # Mostrar el gráfico (opcional)
         
         
 
