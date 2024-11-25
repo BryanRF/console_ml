@@ -1,56 +1,80 @@
 import sqlite3
 
-# Crear o conectar la base de datos
-def initialize_db():
-    conn = sqlite3.connect('data.db')
+# Crear las tablas necesarias
+def setup_database():
+    conn = sqlite3.connect('modelos.db')
     cursor = conn.cursor()
+    # Tabla para los datasets
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS datasets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            path TEXT NOT NULL
+            nombre TEXT,
+            ruta_excel TEXT,
+            ruta_pdf TEXT,
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    # Tabla para los entrenamientos
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS algorithms (
+        CREATE TABLE IF NOT EXISTS entrenamientos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            model_path TEXT NOT NULL
+            nombre_algoritmo TEXT,
+            nombre_dataset TEXT,
+            ruta_modelo TEXT,
+            fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     conn.commit()
     conn.close()
 
-# Insertar dataset
-def insert_dataset(name, path):
-    conn = sqlite3.connect('data.db')
+# Guardar un nuevo dataset
+def save_dataset_to_db(nombre, ruta_excel, ruta_pdf):
+    conn = sqlite3.connect('modelos.db')
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO datasets (name, path) VALUES (?, ?)', (name, path))
+    cursor.execute('''
+        INSERT INTO datasets (nombre, ruta_excel, ruta_pdf)
+        VALUES (?, ?, ?)
+    ''', (nombre, ruta_excel, ruta_pdf))
     conn.commit()
     conn.close()
 
-# Insertar algoritmo
-def insert_algorithm(name, model_path):
-    conn = sqlite3.connect('data.db')
+# Guardar un nuevo entrenamiento
+def save_training_to_db(nombre_algoritmo, nombre_dataset, ruta_modelo):
+    conn = sqlite3.connect('modelos.db')
     cursor = conn.cursor()
-    cursor.execute('INSERT INTO algorithms (name, model_path) VALUES (?, ?)', (name, model_path))
+    cursor.execute('''
+        INSERT INTO entrenamientos (nombre_algoritmo, nombre_dataset, ruta_modelo)
+        VALUES (?, ?, ?)
+    ''', (nombre_algoritmo, nombre_dataset, ruta_modelo))
     conn.commit()
     conn.close()
 
-# Obtener todos los datasets
-def get_datasets():
-    conn = sqlite3.connect('data.db')
+# Recuperar el último dataset
+def get_last_dataset():
+    conn = sqlite3.connect('modelos.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, name, path FROM datasets')
-    datasets = cursor.fetchall()
+    cursor.execute('''
+        SELECT * FROM datasets
+        ORDER BY fecha DESC
+        LIMIT 1
+    ''')
+    dataset = cursor.fetchone()  # Solo un resultado
     conn.close()
-    return datasets
+    return dataset
 
-# Obtener todos los algoritmos
-def get_algorithms():
-    conn = sqlite3.connect('data.db')
+# Recuperar entrenamientos asociados al último dataset
+def get_trainings_for_last_dataset():
+    conn = sqlite3.connect('modelos.db')
     cursor = conn.cursor()
-    cursor.execute('SELECT id, name, model_path FROM algorithms')
-    algorithms = cursor.fetchall()
+    cursor.execute('''
+        SELECT * FROM entrenamientos
+        WHERE nombre_dataset = (
+            SELECT nombre FROM datasets
+            ORDER BY fecha DESC
+            LIMIT 1
+        )
+        ORDER BY fecha DESC
+    ''')
+    trainings = cursor.fetchall()  # Todos los entrenamientos relacionados
     conn.close()
-    return algorithms
+    return trainings

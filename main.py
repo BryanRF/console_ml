@@ -1,14 +1,16 @@
+#main.py
 import os
 import time
 import pickle
 from google_drive_downloader import GoogleDriveDownloader as gdd
 from PIL import Image
 import numpy as np
-from svm import train_svm
-from naive_bayes import train_naive_bayes
-from decision_tree import train_decision_tree
-from logistic_regression import train_logistic_regression
-from neural_network import train_neural_network
+from database import *
+from algoritmos.svm import train_svm
+from algoritmos.naive_bayes import train_naive_bayes
+from algoritmos.decision_tree import train_decision_tree
+from algoritmos.logistic_regression import train_logistic_regression
+from algoritmos.neural_network import train_neural_network
 from sklearn.model_selection import train_test_split
 import pandas as pd
 import sys
@@ -19,6 +21,7 @@ from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import Font, PatternFill, Alignment
 from datetime import datetime
+from fpdf import FPDF
 
 import os
 import matplotlib.pyplot as plt
@@ -30,7 +33,7 @@ algorithms = {
     'Logistic Regression': train_logistic_regression,
     'Neural Network': train_neural_network,
 }
-
+setup_database()
 # Animación de carga mejorada con emojis
 def loading_animation(message="Cargando"):
     emojis = ['🚀', '🌌', '🌕', '✨']
@@ -93,7 +96,6 @@ def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name):
     os.makedirs(model_dir, exist_ok=True)
 
     for name, train_func in algorithms.items():
-        # Loading para cada algoritmo con emojis
         global loading_done
         loading_done = False
         print(f"🧠 Entrenando {name}...")
@@ -101,28 +103,31 @@ def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name):
         thread.start()
         
         try:
-            # Entrenar y evaluar el modelo
             model_result = train_func(X_train, y_train, X_test, y_test)
             results[name] = model_result
             
-            # Guardar el modelo entrenado en la carpeta correspondiente
+            # Guardar el modelo entrenado
             model_path = os.path.join(model_dir, f"{name}.pkl")
             with open(model_path, 'wb') as model_file:
                 pickle.dump(model_result['model'], model_file)
             
-            # Identificar el mejor modelo basado en la precisión
+            # Guardar información del modelo en la base de datos
+            save_training_to_db(name, dataset_name, model_path)
+            
+            # Identificar el mejor modelo
             if model_result['accuracy'] > best_accuracy:
                 best_accuracy = model_result['accuracy']
                 best_model = model_path
         finally:
             loading_done = True
-            thread.join()  # Esperar que el loading termine
+            thread.join()
             print(f"✅ {name} completado.")
     
     return results, best_model
-
 # Generación del reporte final en un archivo Excel
 def generate_report(results, dataset_name):
+    if not os.path.exists("resultados"):
+        os.makedirs("resultados")
     report_data = []
     for model_name, metrics in results.items():
         report_data.append({
@@ -141,11 +146,9 @@ def generate_report(results, dataset_name):
     excel_dir = os.path.join(output_dir, "excel")
     images_dir = os.path.join(output_dir, "imagenes")
     
-    # Crear las carpetas si no existen
     os.makedirs(excel_dir, exist_ok=True)
     os.makedirs(images_dir, exist_ok=True)
 
-    # Guardar el reporte en Excel
     filename = f'Resultado_ml_{dataset_name}_{current_time}.xlsx'
     filepath = os.path.join(excel_dir, filename)
 
@@ -175,12 +178,9 @@ def generate_report(results, dataset_name):
 
     wb.save(filepath)
     print(f"📊 Reporte generado: {filepath}")
-
-    # Abrir el archivo automáticamente
-    os.startfile(filepath)
-    
     # Generar gráficos de barras para cada métrica
     metrics = ['Accuracy', 'Precision', 'Recall', 'F1 Score', 'AUC']
+    # Abrir el archivo automáticamente
     for metric in metrics:
         plt.figure(figsize=(10, 6))
         plt.bar(df_report['Model'], df_report[metric], color='skyblue')
@@ -195,25 +195,87 @@ def generate_report(results, dataset_name):
         chart_path = os.path.join(images_dir, f'{metric}_chart_{dataset_name}_{current_time}.png')
         plt.savefig(chart_path)
         print(f"📊 Gráfico {metric} guardado: {chart_path}")
+    # Generar reporte en PDF
+    generate_pdf_report(images_dir, dataset_name)
+    pdf_filename = f"Reporte_{dataset_name}_{current_time}.pdf"
+    pdf_filepath = os.path.join(images_dir, pdf_filename)
 
-        
-        
+    # Guardar información del dataset en la base de datos
+    save_dataset_to_db(dataset_name, filepath, pdf_filepath)    
 
 # Función para clasificar una nueva imagen usando el mejor modelo
 def classify_image(image_path, model_path):
+    print(f"[DEBUG] Ruta del modelo cargado: {model_path}")  # Depuración
+    print(f"[DEBUG] Ruta de la imagen cargada: {image_path}")  # Depuración
+
+    # Validar que la ruta del modelo existe
+    if not os.path.exists(model_path):
+        raise FileNotFoundError(f"El archivo del modelo no existe: {model_path}")
+
+    # Validar que la imagen existe
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"El archivo de la imagen no existe: {image_path}")
+
+    # Cargar el modelo desde la ruta
     with open(model_path, 'rb') as file:
         model = pickle.load(file)
-    
+        print(f"[DEBUG] Modelo cargado exitosamente desde: {model_path}")  # Depuración
+
+    # Procesar la imagen
     img = Image.open(image_path).convert('RGB')
     img = img.resize((224, 224))
-    img_array = np.array(img).flatten().reshape(1, -1)  # Preparar imagen para predicción
+    img_array = np.array(img).flatten().reshape(1, -1)
+    print(f"[DEBUG] Imagen procesada para predicción.")  # Depuración
+
+    # Clasificar la imagen
     prediction = model.predict(img_array)
+    print(f"[DEBUG] Predicción realizada: {prediction[0]}")  # Depuración
     return prediction[0]
 
+
+def generate_pdf_report(images_dir, dataset_name):
+    """
+    Genera un PDF que combina gráficos e imágenes en un archivo único.
+    """
+    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    pdf_filename = f"Reporte_{dataset_name}_{current_time}.pdf"
+    pdf_filepath = os.path.join(images_dir, pdf_filename)
+    
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Configuración general de la fuente
+    pdf.set_font("Arial", size=12)
+    
+    # Agregar la portada
+    pdf.add_page()
+    pdf.set_font("Arial", size=16, style="B")
+    pdf.cell(0, 10, f"Reporte de Resultados: {dataset_name}", ln=True, align='C')
+    pdf.set_font("Arial", size=12)
+    pdf.ln(10)
+    pdf.cell(0, 10, f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", ln=True, align='C')
+    pdf.ln(20)
+    
+    # Agregar gráficos
+    for file in sorted(os.listdir(images_dir)):
+        if file.endswith(".png"):
+            img_path = os.path.join(images_dir, file)
+            pdf.add_page()
+            pdf.set_font("Arial", size=14, style="B")
+            pdf.cell(0, 10, os.path.basename(file), ln=True, align='C')
+            pdf.ln(10)
+            pdf.image(img_path, x=10, y=30, w=190)
+    
+    # Guardar el PDF
+    pdf.output(pdf_filepath)
+    print(f"📄 PDF generado: {pdf_filepath}")
+    
 # Ejecución completa del sistema
 def main(input_path, dataset_name, source='local'):
     X_train, X_test, y_train, y_test = load_data(input_path, source)
     results, best_model = evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name)
+
+    # Generar reportes
     generate_report(results, dataset_name)
     print(f"El mejor modelo entrenado se encuentra en: {best_model}")
 
