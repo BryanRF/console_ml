@@ -295,3 +295,12 @@ def main(input_path, dataset_name, source='local', selected_algorithms=None):
     print(f"El mejor modelo entrenado se encuentra en: {best_model}")
 
 
+
+# Entrenamiento
+main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
+# main("link drive abierto", 'Dataset_de_Estrias', source='drive')
+
+# Clasificar una nueva imagen
+# Ejemplo de uso de clasificación
+# image_class = classify_image("C:\\Users\\rfrey\\Documents\\console_ml\\imagen\\e204236c65.JPG", "entrenamiento/Dataset_de_Estrias/SVM.pkl")
+# print(f"🧠 La clase de la imagen es: {image_class}")
