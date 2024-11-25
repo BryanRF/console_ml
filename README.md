@@ -47,8 +47,9 @@ Asegúrate de tener instalado:
 7. **Ejecutar proyecto:**
    Cuando termines, puedes desactivar el entorno virtual con:
    ```bash
-   python run.py
+   python main.py
    ```
+   abrir http://127.0.0.1:5000/
 
 ## Notas
 - Cada vez que trabajes en este proyecto, recuerda activar el entorno virtual antes de ejecutar cualquier comando.
