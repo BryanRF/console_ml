@@ -220,7 +220,7 @@ def main(input_path, dataset_name, source='local'):
 
 
 # Entrenamiento
-main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
+# main("C:\\Users\\rfrey\\Documents\\console_ml\\dataset", 'Dataset_de_Estrias', source='local')
 # main("link drive abierto", 'Dataset_de_Estrias', source='drive')
 
 # Clasificar una nueva imagen

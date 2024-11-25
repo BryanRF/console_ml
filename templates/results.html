@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resultados</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <h1>Resultados del Entrenamiento</h1>
+    <ul>
+        {% for model, metrics in results.items() %}
+        <li>{{ model }}: {{ metrics['accuracy'] }}</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('index') }}">Volver al inicio</a>
+</body>
+</html>
