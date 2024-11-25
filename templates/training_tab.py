@@ -32,7 +32,10 @@ def start_training(
     if not dataset_path or not dataset_name:
         messagebox.showerror("Error", "Por favor, completa todos los campos.")
         return
-
+    selected_algorithms = [algo for algo, var in zip(algo_names, check_vars) if var.get()]
+    if not selected_algorithms:
+        messagebox.showerror("Error", "Debes seleccionar al menos un algoritmo para entrenar.")
+        return
     try:
         selected_algorithms = get_selected_algorithms(check_vars, algo_names)
     except ValueError as e:
