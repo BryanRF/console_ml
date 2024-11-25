@@ -36,7 +36,7 @@ algorithms = {
 setup_database()
 # Animación de carga mejorada con emojis
 def loading_animation(message="Cargando"):
-    emojis = ['🧠', '⚙️', '🤖', '🖥️']
+    emojis = ['🧠', '⚙️', '🧠', '⚙️']
     for char in itertools.cycle(emojis):
         if loading_done:
             sys.stdout.write(f'\r{message} ✅ Completado!          \n')  # Asegura que se limpia la línea
@@ -102,7 +102,7 @@ def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name, selected
         global loading_done
         loading_done = False
         print(f"🧠 Entrenando {name}...")
-        thread = threading.Thread(target=loading_animation, args=(f"🚀 Entrenando {name}",))
+        thread = threading.Thread(target=loading_animation, args=(f"⚙️ Entrenando {name}",))
         thread.start()
         
         try:
@@ -152,7 +152,7 @@ def generate_report(results, dataset_name):
     os.makedirs(excel_dir, exist_ok=True)
     os.makedirs(images_dir, exist_ok=True)
 
-    filename = f'Resultado_ml_{dataset_name}_{current_time}.xlsx'
+    filename = f'Resultado_ml_{dataset_name}.xlsx'
     filepath = os.path.join(excel_dir, filename)
 
     df_report = pd.DataFrame(report_data)
@@ -195,12 +195,12 @@ def generate_report(results, dataset_name):
         plt.tight_layout()
         
         # Guardar el gráfico como archivo de imagen en la carpeta de imágenes
-        chart_path = os.path.join(images_dir, f'{metric}_chart_{dataset_name}_{current_time}.png')
+        chart_path = os.path.join(images_dir, f'{metric}_chart_{dataset_name}.png')
         plt.savefig(chart_path)
         print(f"📊 Gráfico {metric} guardado: {chart_path}")
     # Generar reporte en PDF
     generate_pdf_report(images_dir, dataset_name)
-    pdf_filename = f"Reporte_{dataset_name}_{current_time}.pdf"
+    pdf_filename = f"Reporte_{dataset_name}.pdf"
     pdf_filepath = os.path.join(images_dir, pdf_filename)
 
     # Guardar información del dataset en la base de datos
@@ -241,7 +241,7 @@ def generate_pdf_report(images_dir, dataset_name):
     Genera un PDF que combina gráficos e imágenes en un archivo único.
     """
     current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    pdf_filename = f"Reporte_{dataset_name}_{current_time}.pdf"
+    pdf_filename = f"Reporte_{dataset_name}.pdf"
     pdf_filepath = os.path.join(images_dir, pdf_filename)
     
     pdf = FPDF()
@@ -259,16 +259,25 @@ def generate_pdf_report(images_dir, dataset_name):
     pdf.cell(0, 10, f"Fecha de generación: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}", ln=True, align='C')
     pdf.ln(20)
     
-    # Agregar gráficos
-    for file in sorted(os.listdir(images_dir)):
-        if file.endswith(".png"):
-            img_path = os.path.join(images_dir, file)
-            pdf.add_page()
-            pdf.set_font("Arial", size=14, style="B")
-            pdf.cell(0, 10, os.path.basename(file), ln=True, align='C')
-            pdf.ln(10)
-            pdf.image(img_path, x=10, y=30, w=190)
-    
+    images = sorted([file for file in os.listdir(images_dir) if file.endswith(".png")])
+    image_count = 0
+
+    for file in images:
+        img_path = os.path.join(images_dir, file)
+        if image_count % 2 == 0:  # Si es el primer gráfico de la página
+            if image_count > 0:  # Añadir una nueva página después de los dos gráficos anteriores
+                pdf.add_page()
+            y_offset = 30  # Posición inicial del primer gráfico
+        else:  # Si es el segundo gráfico
+            y_offset = 150  # Posición para el segundo gráfico
+
+        # Título del gráfico
+        pdf.set_font("Arial", size=14, style="B")
+        pdf.image(img_path, x=10, y=y_offset, w=190)
+        pdf.ln(10)
+
+        image_count += 1
+
     # Guardar el PDF
     pdf.output(pdf_filepath)
     print(f"📄 PDF generado: {pdf_filepath}")
