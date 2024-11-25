@@ -34,14 +34,14 @@ def start_training(entry_path, entry_name, progress_label, progress_bar):
     thread = threading.Thread(target=run_training, args=(dataset_path, dataset_name, progress_label, progress_bar))
     thread.start()
 
-def run_training(dataset_path, dataset_name, progress_label, progress_bar):
+def run_training(dataset_path, dataset_name, progress_label, progress_bar, selected_algorithms):
     try:
-        main(dataset_path, dataset_name)  # Llama la función `main` del archivo `main.py`
+        main(dataset_path, dataset_name, selected_algorithms=selected_algorithms)  # Pasa la lista de algoritmos seleccionados
         messagebox.showinfo("Éxito", "¡Entrenamiento completado!")
     except Exception as e:
         messagebox.showerror("Error", f"Hubo un error durante el entrenamiento: {e}")
     finally:
-        progress_bar.pack_forget()  # Ocultar la barra de progreso
+        progress_bar.pack_forget()
         progress_label.configure(text="Listo")
 
 # Función para abrir Excel del último dataset
@@ -84,14 +84,37 @@ def create_training_tab(tabview):
     ctk.CTkLabel(tab_training, text="Nombre del Dataset:", font=("Arial", 14)).pack(pady=10)
     entry_name_training = ctk.CTkEntry(tab_training, width=400, placeholder_text="Ingresa el nombre del dataset")
     entry_name_training.pack(pady=5)
+    
+    # Lista de algoritmos con checkboxes
+    algo_names = ['SVM', 'Naive Bayes', 'Decision Tree', 'Logistic Regression', 'Neural Network']
+    check_vars = [ctk.IntVar() for _ in algo_names]
+
+    ctk.CTkLabel(tab_training, text="Selecciona Algoritmos:", font=("Arial", 14)).pack(pady=10)
+    frame_algorithms = ctk.CTkFrame(tab_training)
+    frame_algorithms.pack(pady=5)
+
+    # Colocar checkboxes horizontalmente
+    for col, (name, var) in enumerate(zip(algo_names, check_vars)):
+        ctk.CTkCheckBox(frame_algorithms, text=name, variable=var).grid(row=0, column=col, padx=10, pady=5)
+
 
     progress_label_training = ctk.CTkLabel(tab_training, text="", font=("Arial", 12))
     progress_label_training.pack(pady=5)
     progress_bar_training = ctk.CTkProgressBar(tab_training, orientation="horizontal", mode="indeterminate", width=400)
     progress_bar_training.pack_forget()
 
-    btn_train = ctk.CTkButton(tab_training, text="Entrenar Modelos", command=lambda: start_training(
-        entry_path_training, entry_name_training, progress_label_training, progress_bar_training))
+    btn_train = ctk.CTkButton(
+        tab_training, 
+        text="Entrenar Modelos", 
+        command=lambda: start_training(
+            entry_path_training, 
+            entry_name_training, 
+            progress_label_training, 
+            progress_bar_training, 
+            check_vars, 
+            algo_names
+        )
+    )
     btn_train.pack(pady=5)
     separator = ctk.CTkFrame(tab_training, height=2, width=600, fg_color="gray")
     separator.pack(pady=10)

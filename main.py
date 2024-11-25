@@ -36,7 +36,7 @@ algorithms = {
 setup_database()
 # Animación de carga mejorada con emojis
 def loading_animation(message="Cargando"):
-    emojis = ['🚀', '🌌', '🌕', '✨']
+    emojis = ['🧠', '⚙️', '🤖', '🖥️']
     for char in itertools.cycle(emojis):
         if loading_done:
             sys.stdout.write(f'\r{message} ✅ Completado!          \n')  # Asegura que se limpia la línea
@@ -58,7 +58,7 @@ def load_data(path, source='local'):
     
     # Iniciar animación en un hilo separado
     loading_done = False
-    thread = threading.Thread(target=loading_animation, args=("🔄 Procesando imágenes",))
+    thread = threading.Thread(target=loading_animation, args=("🧠 Procesando imágenes",))
     thread.start()
     
     try:
@@ -88,7 +88,7 @@ def load_data(path, source='local'):
     return X_train, X_test, y_train, y_test
 
 # Entrenamiento y evaluación de cada algoritmo con loading específico y guardado de modelos
-def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name):
+def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name, selected_algorithms):
     results = {}
     best_model = None
     best_accuracy = 0.0
@@ -96,6 +96,9 @@ def evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name):
     os.makedirs(model_dir, exist_ok=True)
 
     for name, train_func in algorithms.items():
+        if name not in selected_algorithms:  # Saltar los no seleccionados
+            continue
+        
         global loading_done
         loading_done = False
         print(f"🧠 Entrenando {name}...")
@@ -271,9 +274,12 @@ def generate_pdf_report(images_dir, dataset_name):
     print(f"📄 PDF generado: {pdf_filepath}")
     
 # Ejecución completa del sistema
-def main(input_path, dataset_name, source='local'):
+def main(input_path, dataset_name, source='local', selected_algorithms=None):
+    if selected_algorithms is None:
+        selected_algorithms = list(algorithms.keys())
+    
     X_train, X_test, y_train, y_test = load_data(input_path, source)
-    results, best_model = evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name)
+    results, best_model = evaluate_algorithms(X_train, X_test, y_train, y_test, dataset_name, selected_algorithms)
 
     # Generar reportes
     generate_report(results, dataset_name)

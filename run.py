@@ -8,7 +8,7 @@ ctk.set_default_color_theme("blue")
 
 app = ctk.CTk()
 app.title("Sistema de Clasificación de Imágenes")
-app.geometry("700x500")
+app.geometry("800x700")
 
 # Crear Tabs
 tabview = ctk.CTkTabview(app)
