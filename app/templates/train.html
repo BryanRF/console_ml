@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}Entrenamiento{% endblock %}
+{% block content %}
+<section class="training-section">
+    <h1>Entrenar Modelos</h1>
+    
+    <div id="loading" style="display: none;">
+        <h3>⚙️ Procesando... Por favor espera.</h3>
+        <div class="spinner"></div>
+    </div>
+
+    <form 
+        id="trainingForm" 
+        class="training-form" 
+        enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <!-- Input for Dataset ZIP/RAR -->
+        <div class="form-group">
+            <label for="dataset_file">Subir Archivo Comprimido del Dataset (.zip o .rar):</label>
+            <input 
+                type="file" 
+                id="dataset_file" 
+                name="dataset_file" 
+                accept=".zip,.rar" 
+                class="form-control" 
+                required>
+        </div>
+
+        <!-- Input for Dataset Name -->
+        <div class="form-group">
+            <label for="dataset_name">{{ form.dataset_name.label }}</label>
+            {{ form.dataset_name(class="form-control", id="dataset_name") }}
+        </div>
+
+        <!-- Selection for Algorithms -->
+        <div class="form-group">
+            <label for="selected_algorithms">{{ form.selected_algorithms.label }}</label>
+            {{ form.selected_algorithms(class="form-control", id="selected_algorithms") }}
+        </div>
+
+        <!-- Submit Button -->
+        <button type="button" class="btn btn-primary" id="trainButton">Entrenar</button>
+    </form>
+</section>
+
+<script>
+    document.getElementById("trainButton").addEventListener("click", async () => {
+        const form = document.getElementById("trainingForm");
+        const formData = new FormData(form);
+
+        // Mostrar el loading spinner
+        const loadingElement = document.getElementById("loading");
+        loadingElement.style.display = "block";
+
+        try {
+            const response = await fetch("{{ url_for('main.train') }}", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            // Ocultar el loading spinner
+            loadingElement.style.display = "none";
+
+            if (response.ok) {
+                alert("Entrenamiento completado con éxito: " + result.message);
+                window.location.href = "{{ url_for('main.index') }}";
+            } else {
+                alert("Error durante el entrenamiento: " + result.error);
+            }
+        } catch (error) {
+            loadingElement.style.display = "none";
+            alert("Hubo un error en la solicitud: " + error.message);
+        }
+    });
+</script>
+{% endblock %}

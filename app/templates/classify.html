@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Clasificación{% endblock %}
+{% block content %}
+<section class="classification-section">
+    <h1>Clasificar Imagen</h1>
+
+    <!-- Sección para mostrar el dataset cargado -->
+    <div id="datasetInfo" style="margin-bottom: 20px;">
+        <h3>Dataset Cargado:</h3>
+        <p id="datasetName">Cargando información del dataset...</p>
+        <div id="downloadButtons" style="display: none;">
+            <button id="downloadExcel" class="btn btn-success">Descargar Excel</button>
+            <button id="downloadPDF" class="btn btn-danger">Descargar PDF</button>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading" style="display: none; text-align: center;">
+        <h3>⚙️ Procesando... Por favor espera.</h3>
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Classification Form -->
+    <form id="classificationForm" class="classification-form" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        
+        <!-- Input for Image -->
+        <div class="form-group">
+            <label for="image">{{ form.image.label }}</label>
+            {{ form.image(class="form-control", id="image") }}
+        </div>
+        
+        <!-- Dropdown for Model Selection -->
+        <div class="form-group">
+            <label for="model">Seleccionar Modelo Entrenado:</label>
+            <select id="modelDropdown" name="model" class="form-control">
+                <option value="">Cargando modelos...</option>
+            </select>
+        </div>
+        
+        <!-- Submit Button -->
+        <button type="button" class="btn btn-primary" id="classifyButton">Clasificar</button>
+    </form>
+
+    <!-- Result Section -->
+    <div id="result" style="display: none; margin-top: 20px;">
+        <h3>Resultado:</h3>
+        <p id="prediction"></p>
+    </div>
+</section>
+
+<script>
+    // Función para cargar información del dataset
+    async function loadDatasetInfo() {
+        const datasetNameElement = document.getElementById("datasetName");
+        const downloadButtons = document.getElementById("downloadButtons");
+        const downloadExcel = document.getElementById("downloadExcel");
+        const downloadPDF = document.getElementById("downloadPDF");
+
+        try {
+            const response = await fetch("{{ url_for('main.get_last_dataset_info') }}");
+            const data = await response.json();
+
+            if (response.ok) {
+                datasetNameElement.textContent = `Nombre: ${data.name}`;
+                downloadButtons.style.display = "block";
+
+                // Configurar los enlaces de descarga
+                downloadExcel.addEventListener("click", () => {
+                    window.location.href = `/download/excel/${encodeURIComponent(data.excel_path)}`;
+                });
+    
+                downloadPDF.addEventListener("click", () => {
+                    window.location.href = `/download/pdf/${encodeURIComponent(data.pdf_path)}`;
+                });
+            } else {
+                datasetNameElement.textContent = data.error || "Error al cargar el dataset.";
+                downloadButtons.style.display = "none";
+            }
+        } catch (error) {
+            datasetNameElement.textContent = "Error al cargar el dataset.";
+            console.error("Error al cargar el dataset:", error);
+        }
+    }
+
+    // Cargar información del dataset al cargar la página
+    window.onload = loadDatasetInfo;
+
+    // Función para cargar modelos en el dropdown
+    async function loadModels() {
+        const modelDropdown = document.getElementById("modelDropdown");
+
+        try {
+            const response = await fetch("{{ url_for('main.get_models') }}");
+            const data = await response.json();
+
+            // Limpiar opciones actuales
+            modelDropdown.innerHTML = "";
+
+            if (response.ok) {
+                // Agregar las opciones al dropdown
+                data.models.forEach(model => {
+                    const option = document.createElement("option");
+                    option.value = model.path;
+                    option.textContent = model.name;
+                    modelDropdown.appendChild(option);
+                });
+            } else {
+                // Mostrar mensaje de error en el dropdown
+                const option = document.createElement("option");
+                option.value = "";
+                option.textContent = data.error || "Error al cargar modelos";
+                modelDropdown.appendChild(option);
+            }
+        } catch (error) {
+            modelDropdown.innerHTML = "<option value=''>Error al cargar modelos</option>";
+            console.error("Error al cargar modelos:", error);
+        }
+    }
+
+    // Llamar a la función de carga al cargar la página
+    window.onload = function () {
+        loadDatasetInfo();
+        loadModels();
+    };
+
+    // Función para clasificar imagen
+    document.getElementById("classifyButton").addEventListener("click", async () => {
+        const form = document.getElementById("classificationForm");
+        const formData = new FormData(form);
+
+        // Mostrar el indicador de carga
+        const loadingElement = document.getElementById("loading");
+        const resultElement = document.getElementById("result");
+        const predictionElement = document.getElementById("prediction");
+        loadingElement.style.display = "block";
+        resultElement.style.display = "none";
+
+        try {
+            const response = await fetch("{{ url_for('main.classify') }}", {
+                method: "POST",
+                body: formData,
+            });
+
+            const result = await response.json();
+
+            // Ocultar el indicador de carga
+            loadingElement.style.display = "none";
+
+            if (response.ok) {
+                // Mostrar el resultado
+                predictionElement.innerText = `Predicción: ${result.prediction}`;
+                resultElement.style.display = "block";
+            } else {
+                alert(`Error: ${result.error}`);
+            }
+        } catch (error) {
+            loadingElement.style.display = "none";
+            alert(`Ocurrió un error: ${error.message}`);
+        }
+    });
+</script>
+{% endblock %}
