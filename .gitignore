@@ -6,7 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
-app/static/uploads/
+app/static/uploads/extracted/
 entrenamiento/
 imagen/
 resultados/
@@ -31,12 +31,13 @@ coverage.xml
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
-
+uploads/
+uploads/extracted/
 # Media files
 media/
 uploaded_images/
-
-
+extracted/
+app/static/uploads/extracted/
 # Temporary files
 *.tmp
 *.temp
