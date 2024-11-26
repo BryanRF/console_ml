@@ -6,7 +6,7 @@ __pycache__/
 .Python
 env/
 venv/
-
+app/static/uploads/
 entrenamiento/
 imagen/
 resultados/
